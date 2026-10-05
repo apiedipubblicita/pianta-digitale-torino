@@ -2328,53 +2328,20 @@ async function drawDirections() {
 
         setTimeout(() => {
           if (coords.length >= 2) {
-            // Calcola distanza geografica tra i due punti (in gradi) per scegliere lo zoom
-            const dLat = Math.abs(coords[0].latitude - coords[1].latitude);
-            const dLng = Math.abs(coords[0].longitude - coords[1].longitude);
-            const maxSpan = Math.max(dLat, dLng);
-
-            // Zoom dinamico ottimizzato per mobile (viewport piccolo):
-            // su schermi piccoli serve più zoom-out per inquadrare entrambi i marker
-            // maxSpan ~0.0001 (vicini, ~10m) → zoom 19.0
-            // maxSpan ~0.0005 (medi, ~50m)   → zoom 18.0
-            // maxSpan ~0.001  (lontani, ~100m) → zoom 17.0
-            // maxSpan ~0.005+ (molto lontani)  → zoom 16.0
-            let dynamicZoom: number;
-            if (maxSpan < 0.00005) {
-              dynamicZoom = 19.0;
-            } else if (maxSpan < 0.0001) {
-              dynamicZoom = 18.5;
-            } else if (maxSpan < 0.0003) {
-              dynamicZoom = 18.0;
-            } else if (maxSpan < 0.0006) {
-              dynamicZoom = 17.5;
-            } else if (maxSpan < 0.001) {
-              dynamicZoom = 17.0;
-            } else if (maxSpan < 0.002) {
-              dynamicZoom = 16.5;
-            } else if (maxSpan < 0.005) {
-              dynamicZoom = 16.0;
-            } else {
-              dynamicZoom = 15.5;
-            }
-
-            const midLat = (coords[0].latitude + coords[1].latitude) / 2;
-            const midLng = (coords[0].longitude + coords[1].longitude) / 2;
-            const midCoord = mapViewRef.createCoordinate(midLat, midLng);
-
-            // Fase 1: centra sulla mezzeria con lo zoom adatto al mobile
-            mapViewRef.Camera.animateTo(
-              { center: midCoord, zoomLevel: dynamicZoom },
-              { duration: 800 }
-            );
-
-            // Fase 2: zoom out ulteriore per dare margine ai marker su schermo piccolo
-            setTimeout(() => {
-              mapViewRef.Camera.animateTo(
-                { zoomLevel: dynamicZoom - 0.5 },
-                { duration: 600 }
-              );
-            }, 700);
+            // Inquadra TUTTA la piantina (un solo movimento), lasciando libero lo spazio
+            // del pannello indicazioni: a sinistra su desktop, in basso su mobile.
+            const panel = document.getElementById("directions-panel")?.getBoundingClientRect();
+            const mobile = window.innerWidth <= 600;
+            const pad = 16;
+            mapViewRef.Camera.focusOn(allSpaces, {
+              duration: 800,
+              screenOffsets: {
+                top: mobile ? pad : 70,
+                bottom: mobile && panel ? window.innerHeight - panel.top + pad : pad,
+                left: !mobile && panel ? panel.right + pad : pad,
+                right: pad,
+              },
+            });
           } else {
             mapViewRef.Camera.animateTo(
               { center: coords[0], zoomLevel: 19.5 },
