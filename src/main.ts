@@ -24,13 +24,17 @@ const VISITOR_ID = localStorage.getItem('vid') ?? (() => {
   return id;
 })();
 
+// events.session_id ha FK su sessions: ogni evento parte solo DOPO l'insert della sessione,
+// altrimenti 409 e l'evento si perde (a Roma: 437 sessioni, solo 274 map_loaded).
+let sessionReady: Promise<unknown> = Promise.resolve();
+
 function trackEvent(name: string, props?: Record<string, unknown>): void {
-  fetch(`${SB_URL}/rest/v1/events`, {
+  sessionReady.then(() => fetch(`${SB_URL}/rest/v1/events`, {
     method: 'POST',
     headers: SB_HEADERS,
     body: JSON.stringify({ session_id: SESSION_ID, city: CITY, event: name, payload: props ?? null }),
     keepalive: true,
-  }).catch(() => {});
+  })).catch(() => {});
 }
 
 // Un solo deeplink_opened per sessione (loc può arrivare sia da ?loc= sia da postMessage)
@@ -46,7 +50,7 @@ function initSession(): void {
   const ua = navigator.userAgent;
   // UTM inoltrati dal sito padre nell'URL dell'iframe (?utm_source=...&utm_medium=...&utm_campaign=...)
   const qp = new URLSearchParams(window.location.search);
-  fetch(`${SB_URL}/rest/v1/sessions`, {
+  sessionReady = fetch(`${SB_URL}/rest/v1/sessions`, {
     method: 'POST',
     headers: SB_HEADERS,
     body: JSON.stringify({
@@ -211,7 +215,6 @@ const STAND_NUMBERS: Record<string, number> = {
   "VDT": 64,
   // Nomi come sono su Mappedin (diversi dal CSV) + doppi stand con il proprio numero
   "VDT - LA VOCE DEL TABACCAIO": 64,
-  "FIT - FEDERAZIONE ITALANA TABACCAI": 54,
   "S.D.S.P.": 56,
   "VAPOUR - INTERNATIONAL KIWI": 9,
   "BR.E.MA. - LEM (A)": 34,
@@ -322,6 +325,8 @@ const PIN_CURSOR_SVG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 async function init() {
   createUI();
 
+  // Sessione subito (prima del caricamento): così timeout/errori/abbandoni hanno una sessione a cui agganciarsi
+  initSession();
   // Watchdog: distingue le sessioni "vuote" per caricamento lento / errore / abbandono
   const loadWatchdog = setTimeout(() => trackEvent('map_load_timeout', { waited_ms: 8000 }), 8000);
   let mapData: any, mapView: any;
@@ -335,7 +340,6 @@ async function init() {
     clearTimeout(loadWatchdog);
   } catch (err) {
     clearTimeout(loadWatchdog);
-    initSession();
     trackEvent('map_load_failed', { error: String((err as Error)?.message ?? err) });
     throw err;
   }
@@ -351,7 +355,6 @@ async function init() {
   }
   await new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 
-  initSession();
   trackEvent('map_loaded', { load_time_ms: Math.round(performance.now()) });
   const initialLoc = new URLSearchParams(window.location.search).get('loc');
   if (initialLoc) trackDeeplink(initialLoc);
