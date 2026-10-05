@@ -1,0 +1,8 @@
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/t2000-logo.svg
+  Cache-Control: public, max-age=86400
+
+/t2000-logo-mask.png
+  Cache-Control: public, max-age=86400

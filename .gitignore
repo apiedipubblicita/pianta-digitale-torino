@@ -1,0 +1,44 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment variables (contengono credenziali, mai committare)
+.env
+.env.local
+.env.*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.claude/settings.local.json
+.claude/*.json
+
+# Espositori CSV (dato volatile per tappa, mai committare)
+expositors.csv
+
+# Local Netlify folder
+.netlify
+
+# Contesto/riassunto progetto (solo locale, per riprendere conversazioni)
+_CONTESTO-ROMA.md
+loc_dump.json
+inspect_*.mjs
+.playwright-cli/
