@@ -666,6 +666,11 @@ async function init() {
 
     // Se il pannello direzioni e' aperto ma non aspettiamo pin,
     // e clicchiamo su uno spazio, usalo come partenza (origin)
+    if (directionsActive && clickedSpace && !directionTo && !toCoord) {
+      setToDestination(clickedSpace, null, clickedSpace.name);
+      document.getElementById("directions-search-dest")!.style.display = "none";
+      return;
+    }
     if (directionsActive && clickedSpace && !directionFrom && !fromCoord) {
       setFromOrigin(clickedSpace);
       return;
@@ -1094,7 +1099,7 @@ function createUI() {
             <span class="direction-dot to-dot"></span>
             <div class="direction-field" id="to-field">
               <label>A:</label>
-              <span id="to-value" class="field-value">—</span>
+              <span id="to-value" class="field-value is-placeholder">Scegli la destinazione</span>
               <button id="to-reset" style="display:none;">Cambia</button>
             </div>
           </div>
@@ -1638,6 +1643,9 @@ function hideLocationPanel() {
 // Directions Panel
 // ============================================
 let waitingForPin = false;
+// La lista di ricerca è condivisa: indica se la scelta va in "Da:" o in "A:"
+let destSearchFor: "from" | "to" = "from";
+const TO_PLACEHOLDER = "Scegli la destinazione";
 
 function setupDirectionsPanelListeners() {
   document.getElementById("directions-close")!.addEventListener("click", () => {
@@ -1699,7 +1707,14 @@ function setupDirectionsPanelListeners() {
     const itemId = target.dataset.itemId;
     const itemType = target.dataset.itemType;
     const item = allSearchableItems.find((i: any) => i.id === itemId && i._type === itemType);
-    if (item) {
+    if (item && destSearchFor === "to") {
+      if (item._type === "annotation" && item._ref.coordinate) {
+        setToDestination(null, item._ref.coordinate, item.name);
+      } else {
+        setToDestination(item._ref, null, item.name);
+      }
+      document.getElementById("directions-search-dest")!.style.display = "none";
+    } else if (item) {
       if (item._type === "space") {
         setFromOrigin(item._ref);
       } else if (item._type === "annotation" && item._ref.coordinate) {
@@ -1750,26 +1765,56 @@ function resetFromField() {
   document.getElementById("from-value")!.style.display = "none";
   document.getElementById("from-reset")!.style.display = "none";
   document.getElementById("from-options")!.style.display = "flex";
-  document.getElementById("directions-search-dest")!.style.display = "none";
+  if (destSearchFor === "from") document.getElementById("directions-search-dest")!.style.display = "none";
   document.getElementById("dropped-pin-hint")!.style.display = "none";
   document.getElementById("directions-info")!.style.display = "none";
   document.getElementById("mappedin-map")!.classList.remove("pin-cursor");
 }
 
+// Imposta "A:" (spazio/door/connection oppure coordinata di un'annotation)
+function setToDestination(ref: any, coord: any, name: string) {
+  directionTo = ref;
+  toCoord = ref ? null : coord;
+  // Evidenzia la nuova destinazione al posto della vecchia
+  clearSelection();
+  if (ref && allSpaces.includes(ref)) {
+    selectedSpace = ref;
+    mapViewRef?.updateState(ref, { interactive: true, color: "#EF8B38", hoverColor: "#D27A31" });
+  }
+  const tv = document.getElementById("to-value")!;
+  tv.textContent = name;
+  tv.classList.remove("is-placeholder");
+  document.getElementById("to-reset")!.style.display = "inline-block";
+  destSearchFor = "from";
+  drawDirections();
+}
+
 function resetToField() {
   directionTo = null;
   toCoord = null;
+  clearSelection(); // il vecchio espositore non resta evidenziato
   mapViewRef?.Navigation?.clear();
   clearDirectionMarkers();
   closeNavStepper();
-  document.getElementById("to-value")!.textContent = "—";
+  const tv = document.getElementById("to-value")!;
+  tv.textContent = TO_PLACEHOLDER;
+  tv.classList.add("is-placeholder");
   document.getElementById("to-reset")!.style.display = "none";
   document.getElementById("directions-info")!.style.display = "none";
+  // Se "Da:" era in attesa del pin sulla mappa, annulla: ora si sceglie "A:"
+  if (waitingForPin) {
+    waitingForPin = false;
+    document.getElementById("dropped-pin-hint")!.style.display = "none";
+    document.getElementById("mappedin-map")!.classList.remove("pin-cursor");
+    if (!directionFrom && !fromCoord) document.getElementById("from-options")!.style.display = "flex";
+  }
   // Mostra la ricerca destinazione per sceglierne una nuova
+  destSearchFor = "to";
   document.getElementById("directions-search-dest")!.style.display = "block";
   const dInput = document.getElementById("dest-search-input") as HTMLInputElement;
   dInput.value = "";
-  dInput.focus();
+  dInput.placeholder = "Cerca destinazione...";
+  if (window.innerWidth > 600) dInput.focus(); // su mobile niente tastiera automatica
   const dResults = document.getElementById("dest-search-results")!;
   dResults.innerHTML = [...allSearchableItems]
     .sort((a: any, b: any) => a.name.localeCompare(b.name, 'it'))
@@ -1801,6 +1846,8 @@ function openDirectionsPanelFromCoord(item: { name: string; coordinate: any; ref
   }
   document.getElementById("to-value")!.textContent = item.name;
   document.getElementById("to-reset")!.style.display = "inline-block";
+  document.getElementById("to-value")!.classList.remove("is-placeholder");
+  destSearchFor = "from";
 
   // Reset "Da:" — mostra le opzioni di partenza
   resetFromField();
@@ -1820,6 +1867,8 @@ function openDirectionsPanel(space: any) {
   toCoord = null;
   document.getElementById("to-value")!.textContent = space.name;
   document.getElementById("to-reset")!.style.display = "inline-block";
+  document.getElementById("to-value")!.classList.remove("is-placeholder");
+  destSearchFor = "from";
 
   // Reset "Da:" — mostra le opzioni di partenza
   resetFromField();
@@ -1844,6 +1893,8 @@ function handleFromOption(type: string, entranceIdx = 0) {
     selectEntranceAsOrigin(entranceIdx);
   } else if (type === "search") {
     waitingForPin = false;
+    destSearchFor = "from";
+    (document.getElementById("dest-search-input") as HTMLInputElement).placeholder = "Cerca punto di partenza...";
     document.getElementById("from-options")!.style.display = "none";
     document.getElementById("directions-search-dest")!.style.display = "block";
     const dInput = document.getElementById("dest-search-input") as HTMLInputElement;
@@ -1934,12 +1985,18 @@ function swapDirections() {
   directionTo = tempFrom;
   toCoord = tempFromCoord;
 
-  // Aggiorna UI
-  const fromName = directionFrom?.name || (fromCoord ? "Punto sulla mappa" : "—");
-  const toName = directionTo?.name || (toCoord ? "Punto sulla mappa" : "—");
+  // Aggiorna UI: scambia i nomi mostrati (ingressi/annotation non hanno .name sul ref)
+  const fv = document.getElementById("from-value")!;
+  const tv = document.getElementById("to-value")!;
+  const oldFromName = fv.style.display !== "none" ? fv.textContent : "";
+  const oldToName = tv.classList.contains("is-placeholder") ? "" : tv.textContent;
+  const fromName = oldToName || directionFrom?.name || (fromCoord ? "Punto sulla mappa" : "—");
+  const toName = oldFromName || directionTo?.name || (toCoord ? "Punto sulla mappa" : TO_PLACEHOLDER);
 
   document.getElementById("from-value")!.textContent = fromName;
   document.getElementById("to-value")!.textContent = toName;
+  document.getElementById("to-value")!.classList.toggle("is-placeholder", !directionTo && !toCoord);
+  document.getElementById("to-reset")!.style.display = (directionTo || toCoord) ? "inline-block" : "none";
 
   if (directionFrom || fromCoord) {
     document.getElementById("from-value")!.style.display = "block";
@@ -2758,6 +2815,13 @@ function injectStyles() {
       margin-top: 2px;
       font-weight: 500;
       text-transform: uppercase;
+    }
+
+    .field-value.is-placeholder {
+      color: #aaa;
+      font-size: 13px;
+      font-weight: 400;
+      text-transform: none;
     }
 
     #to-reset {
