@@ -810,8 +810,8 @@ async function init() {
   const NAME_ZOOM_THRESHOLD = isMobileViewport ? 18.9 : 18.2;
   let lastNames: boolean | null = null;
   const applyNameVisibility = (z: number) => {
-    // Con le indicazioni attive la vista intera (focusOn allSpaces) renderebbe i numeri un
-    // ammasso che copre il percorso: sotto soglia restano solo i servizi (CSS .map-directions).
+    // Con le indicazioni attive la vista intera (focusOn allSpaces) affolla i numeri sul
+    // percorso: sotto soglia le pillole restano ma ridotte (CSS .map-directions).
     mapEl.classList.toggle("map-directions", directionsActive);
     const show = z >= NAME_ZOOM_THRESHOLD;
     if (show === lastNames) return;
@@ -1117,7 +1117,7 @@ function createUI() {
                       <circle cx="11" cy="11" r="8"/>
                       <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
-                    Cerca punto di partenza
+                    Cerca partenza
                   </button>
                 </div>
                 <button class="from-option" data-type="pin">
@@ -3086,8 +3086,11 @@ function injectStyles() {
     .marker-label-text.marker-label-svc {
       display: block;
     }
+    /* Indicazioni + vista intera: pillole più piccole per non coprire il percorso */
     #mappedin-map.map-directions:not(.map-names-visible) .marker-stand-num {
-      display: none !important; /* batte il display:flex inline */
+      transform: scale(0.75);
+      transform-origin: center;
+      opacity: 0.9;
     }
 
     /* Nascondi attributions Mappedin (DOM) */
