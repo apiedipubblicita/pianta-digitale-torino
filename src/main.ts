@@ -608,13 +608,21 @@ async function init() {
       const profile = spaceProfileMap[space.id];
       const logoUrl = profile?.logoImage?.url || profile?.logo || null;
       const textShadow = "-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 -1px 0 #fff, 0 1px 0 #fff, -1px 0 0 #fff, 1px 0 0 #fff";
+      const standNum = isSvc ? undefined : getStandNumber(space.name);
 
       let labelHtml: string;
-      if (logoUrl) {
+      if (standNum !== undefined) {
+        // Espositore: numero stand SEMPRE visibile (pill 22px), nome solo da vicino (.map-names-visible)
+        labelHtml = `
+          <div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;">
+            <div class="marker-label-text" style="color:${labelColor};font-size:11px;font-weight:700;font-family:'Onest',sans-serif;text-align:center;text-shadow:${textShadow};max-width:120px;line-height:1.15;word-wrap:break-word;overflow-wrap:break-word;">${space.name}</div>
+            <div class="marker-stand-num" style="min-width:22px;height:22px;padding:0 6px;box-sizing:border-box;border-radius:11px;background:#fff;border:1.5px solid ${labelColor};color:${labelColor};font-size:11px;font-weight:800;font-family:'Onest',sans-serif;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.25);margin-top:2px;">${standNum}</div>
+          </div>`;
+      } else if (logoUrl) {
         // Verticale: nome sopra + logo nel cerchietto sotto (espositori E servizi)
         labelHtml = `
           <div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;">
-            <div class="marker-label-text" style="color:${labelColor};font-size:8px;font-weight:700;font-family:'Onest',sans-serif;text-align:center;text-shadow:${textShadow};max-width:100px;line-height:1.2;word-wrap:break-word;overflow-wrap:break-word;">${space.name}</div>
+            <div class="marker-label-text marker-label-svc" style="color:${labelColor};font-size:11px;font-weight:700;font-family:'Onest',sans-serif;text-align:center;text-shadow:${textShadow};max-width:120px;line-height:1.15;word-wrap:break-word;overflow-wrap:break-word;">${space.name}</div>
             <div style="width:26px;height:26px;border-radius:50%;background:#fff;border:1.5px solid ${labelColor};box-shadow:0 1px 3px rgba(0,0,0,0.28);overflow:hidden;display:flex;align-items:center;justify-content:center;margin-top:2px;flex-shrink:0;">
               <img src="${logoUrl}" alt="" style="width:86%;height:86%;object-fit:contain;" />
             </div>
@@ -623,8 +631,8 @@ async function init() {
         // Verticale: nome + pallino (default, nessun logo)
         labelHtml = `
           <div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;">
-            <div class="marker-label-text" style="color:${labelColor};font-size:8px;font-weight:700;font-family:'Onest',sans-serif;text-align:center;text-shadow:${textShadow};max-width:100px;line-height:1.2;word-wrap:break-word;overflow-wrap:break-word;">${space.name}</div>
-            <div style="width:7px;height:7px;border-radius:50%;background:${labelColor};border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);margin-top:1px;"></div>
+            <div class="marker-label-text marker-label-svc" style="color:${labelColor};font-size:11px;font-weight:700;font-family:'Onest',sans-serif;text-align:center;text-shadow:${textShadow};max-width:120px;line-height:1.15;word-wrap:break-word;overflow-wrap:break-word;">${space.name}</div>
+            <div style="width:10px;height:10px;border-radius:50%;background:${labelColor};border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);margin-top:1px;"></div>
           </div>`;
       }
       detailMarkers.push(mapView.Markers.add(space, labelHtml, { rank: "always-visible" }));
@@ -643,10 +651,10 @@ async function init() {
       ? `<div style="width:26px;height:26px;border-radius:50%;background:#fff;border:1.5px solid ${labelColor};box-shadow:0 1px 3px rgba(0,0,0,0.28);overflow:hidden;display:flex;align-items:center;justify-content:center;margin-top:2px;flex-shrink:0;">
            <img src="${logoUrl}" alt="" style="width:86%;height:86%;object-fit:contain;" />
          </div>`
-      : `<div style="width:7px;height:7px;border-radius:50%;background:${labelColor};border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);margin-top:1px;"></div>`;
+      : `<div style="width:10px;height:10px;border-radius:50%;background:${labelColor};border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);margin-top:1px;"></div>`;
     const labelHtml = `
       <div onclick="event.stopPropagation();window.handleConnectionClick('${conn.id}')" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;pointer-events:auto;">
-        <div class="marker-label-text" style="color:${labelColor};font-size:8px;font-weight:700;font-family:'Onest',sans-serif;text-align:center;text-shadow:${textShadow};max-width:100px;line-height:1.2;word-wrap:break-word;overflow-wrap:break-word;">${conn.name}</div>
+        <div class="marker-label-text marker-label-svc" style="color:${labelColor};font-size:11px;font-weight:700;font-family:'Onest',sans-serif;text-align:center;text-shadow:${textShadow};max-width:120px;line-height:1.15;word-wrap:break-word;overflow-wrap:break-word;">${conn.name}</div>
         ${iconBlock}
       </div>`;
     try {
@@ -796,12 +804,44 @@ async function init() {
     const cam = mapView.Camera as any;
     return typeof cam.zoomLevel === "number" ? cam.zoomLevel : 17.7;
   };
+  // Nomi espositori: visibili solo da vicino (sotto la soglia restano i soli numeri stand,
+  // i servizi hanno sempre il nome). Soglia più alta su mobile: schermo stretto, meno spazio.
+  const isMobileViewport = window.innerWidth <= 600;
+  const NAME_ZOOM_THRESHOLD = isMobileViewport ? 18.9 : 18.2;
+  let lastNames: boolean | null = null;
+  const applyNameVisibility = (z: number) => {
+    // Con le indicazioni attive la vista intera (focusOn allSpaces) renderebbe i numeri un
+    // ammasso che copre il percorso: sotto soglia restano solo i servizi (CSS .map-directions).
+    mapEl.classList.toggle("map-directions", directionsActive);
+    const show = z >= NAME_ZOOM_THRESHOLD;
+    if (show === lastNames) return;
+    lastNames = show;
+    mapEl.classList.toggle("map-names-visible", show);
+  };
   // Hook richiamabile quando cambia lo stato indicazioni (forza ricalcolo)
-  refreshZoomView = () => { lastFar = null; applyZoomVisibility(getZoom()); };
+  refreshZoomView = () => { lastFar = null; applyZoomVisibility(getZoom()); applyNameVisibility(getZoom()); };
   mapView.on("camera-change", (t: any) => {
-    if (t && typeof t.zoomLevel === "number") applyZoomVisibility(t.zoomLevel);
+    if (t && typeof t.zoomLevel === "number") { applyZoomVisibility(t.zoomLevel); applyNameVisibility(t.zoomLevel); }
   });
-  applyZoomVisibility(getZoom()); // stato iniziale (vista lontana di default)
+  // Mobile: vista iniziale centrata sull'ingresso del padiglione, zoom intermedio (solo numeri stand).
+  // Desktop: vista intera di default del SDK.
+  // L'ingresso sta sul bordo del padiglione: il centro viene spostato del 30% verso il
+  // baricentro degli stand, così lo schermo inquadra l'ingresso E le prime file.
+  if (isMobileViewport && entranceList[0]?.coordinate && !new URLSearchParams(window.location.search).get('loc')) {
+    try {
+      const ent = entranceList[0].coordinate;
+      const centers = allSpaces.map((sp: any) => sp.center).filter((c: any) => c && typeof c.latitude === 'number');
+      let center = ent;
+      if (centers.length) {
+        const cLat = centers.reduce((a: number, c: any) => a + c.latitude, 0) / centers.length;
+        const cLng = centers.reduce((a: number, c: any) => a + c.longitude, 0) / centers.length;
+        center = mapView.createCoordinate(ent.latitude + (cLat - ent.latitude) * 0.3, ent.longitude + (cLng - ent.longitude) * 0.3);
+      }
+      mapView.Camera.set({ center, zoomLevel: 18.4 });
+    } catch { /* ignore */ }
+  }
+  applyZoomVisibility(getZoom()); // stato iniziale
+  applyNameVisibility(getZoom());
 
   debug("Mappa caricata con successo!");
 }
@@ -1039,7 +1079,10 @@ function createUI() {
       </div>
       <div id="location-header">
         <img id="location-logo" alt="" style="display:none;" />
-        <h3 id="location-name"></h3>
+        <div id="location-title">
+          <h3 id="location-name"></h3>
+          <div id="location-stand" style="display:none;"></div>
+        </div>
         <button id="location-close">&times;</button>
       </div>
       <div id="location-description" style="display:none;"></div>
@@ -1067,20 +1110,22 @@ function createUI() {
             <div class="direction-field" id="from-field">
               <label>Da:</label>
               <div id="from-options">
+                <div id="from-top-row">
+                  <div id="from-entrance-list"></div>
+                  <button class="from-option" data-type="search">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8"/>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    Cerca punto di partenza
+                  </button>
+                </div>
                 <button class="from-option" data-type="pin">
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                     <circle cx="12" cy="10" r="3"/>
                   </svg>
                   Scegli sulla mappa il punto da cui parti
-                </button>
-                <div id="from-entrance-list"></div>
-                <button class="from-option" data-type="search">
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"/>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                  </svg>
-                  Cerca punto di partenza
                 </button>
               </div>
               <span id="from-value" class="field-value" style="display:none;"></span>
@@ -1481,6 +1526,17 @@ function showLocationPanel(space: any) {
 
   // Name
   document.getElementById("location-name")!.textContent = space.name || "Spazio senza nome";
+
+  // Numero stand (solo espositori), sotto il nome
+  const standEl = document.getElementById("location-stand")!;
+  const standNum = space.name ? getStandNumber(space.name) : undefined;
+  if (standNum !== undefined) {
+    standEl.textContent = `Stand ${standNum}`;
+    standEl.style.display = "block";
+  } else {
+    standEl.textContent = "";
+    standEl.style.display = "none";
+  }
 
   // Logo (in header, next to name)
   const logoEl = document.getElementById("location-logo") as HTMLImageElement;
@@ -2562,12 +2618,24 @@ function injectStyles() {
       border-bottom: 1px solid #eee;
     }
 
+    #location-title {
+      flex: 1;
+      min-width: 0;
+    }
+
     #location-header h3 {
       margin: 0;
       font-size: 17px;
       color: #54595F;
-      flex: 1;
       text-transform: uppercase;
+    }
+
+    #location-stand {
+      margin-top: 3px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #881814;
+      letter-spacing: 0.3px;
     }
 
     #location-close {
@@ -2865,9 +2933,25 @@ function injectStyles() {
       margin-top: 6px;
     }
 
-    /* Ingressi padiglione affiancati per occupare meno spazio (utile su mobile) */
+    /* Prima riga: ingresso/i + cerca affiancati; sotto "scegli sulla mappa" */
+    #from-top-row {
+      display: flex;
+      flex-direction: row;
+      gap: 6px;
+    }
+    #from-top-row > .from-option[data-type="search"] {
+      flex: 1 1 0;
+      min-width: 0;
+      justify-content: center;
+      text-align: center;
+      font-size: 12px;
+      padding: 10px 8px;
+      line-height: 1.15;
+    }
     #from-entrance-list {
       display: flex;
+      flex: 1 1 0;
+      min-width: 0;
       flex-direction: row;
       gap: 6px;
       flex-wrap: wrap;
@@ -2992,13 +3076,18 @@ function injectStyles() {
       cursor: ${PIN_CURSOR_SVG} !important;
     }
 
-    /* Nascondi testi marker quando zoom lontano — mostrati via JS aggiungendo .map-zoomed-in */
+    /* Nomi espositori nascosti finché non si zooma abbastanza (.map-names-visible via JS);
+       i servizi (.marker-label-svc) mostrano sempre il nome. */
     .marker-label-text {
       display: none;
       text-transform: uppercase;
     }
-    #mappedin-map.map-zoomed-in .marker-label-text {
+    #mappedin-map.map-names-visible .marker-label-text,
+    .marker-label-text.marker-label-svc {
       display: block;
+    }
+    #mappedin-map.map-directions:not(.map-names-visible) .marker-stand-num {
+      display: none !important; /* batte il display:flex inline */
     }
 
     /* Nascondi attributions Mappedin (DOM) */
